@@ -1,7 +1,7 @@
 import gspread, os
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+
 
 def service_acct(cred):
     if os.path.isfile(cred) and os.access(cred, os.R_OK):
@@ -35,17 +35,36 @@ def eda(df):
 def network_dau(dates, networks, df):
     network_daily_user = []
     for date in dates:
-        d = df[df.index == date] #data frame for each day
+        d = df[df.index == date] #dataframe for each day
         network_daily_user.append({i: d[d.Network == i].dau.sum() for i in networks}) #dau for each network
     network_daily_user = pd.DataFrame.from_dict(network_daily_user)
     network_daily_user.index = dates
     return network_daily_user
 
-def plot_it(df):
+def plot_dau(df):
     network = df.eq(df.max(1), axis=0).dot(df.columns)[1] #the network that has the max value
-    sns.set_style("darkgrid")
-    plt.figure(figsize=(12, 5))
-    sns.lineplot(data=df).set_title(f"{network} usually has the most active users on a daily basis")
+    fig = px.line(df, title=f"{network} has the most active users on a daily basis")
+    fig.show()
+
+def plot_ratio(df):
+    fig = px.line(df, title="The conversion rate over time")
+    fig.show()
+
+def conver_rate(dates, networks, df):
+    idf = df[df['Installs'] != 0] #sub dataframe (which installs !=0) con_rate = sub_start/installs
+    sub_df = []
+    inst_df = []
+    for date in dates:
+        d = idf[idf.index == date]  # return dataframe for each day
+
+        sub_df.append({i: d[d.Network == i].sub_started.sum() for i in networks}) #agg subStarted for each network in a day
+        inst_df.append({i: d[d.Network == i].Installs.sum() for i in networks})   #agg installs for each network in a day
+    ssdf = pd.DataFrame(sub_df)
+    indf = pd.DataFrame(inst_df)
+    ssdf.index = dates  # add dates as index to subscription started dataframe
+    indf.index = dates  # add dates as index to installs dataframe
+    convRate_df = ssdf.div(indf) # calculate the ratio
+    return convRate_df
 
 
 def main():
@@ -58,10 +77,16 @@ def main():
     dataframe = pd.DataFrame.from_dict(data)
 
     unique_dates, networks = eda(dataframe)
-    #create new dataframe for each unique day
-    net_dau = network_dau(unique_dates, networks, dataframe)
-    plot_it(net_dau)
 
+    #Create first metric "The network usually has the most active users on a daily basis"
+    net_dau = network_dau(unique_dates, networks, dataframe)
+    plot_dau(net_dau)
+    # send ndf to MySQL
+
+    #Create second metric "The network that has the best conversion ratio over time"
+    conversion_rate = conver_rate(unique_dates, networks, dataframe)
+    plot_ratio(conversion_rate)
+    print("Done..")
 
 
 
