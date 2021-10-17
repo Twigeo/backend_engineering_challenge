@@ -1,8 +1,8 @@
 # These are some examples of commonly ignored file patterns.
 # You should customize this list as applicable to your project.
 
-# credentials
-twigeo-credentials.json
+# API credentials
+sheetAPI_key.json
 
 # Compiled Python bytecode
 *.py[cod]
